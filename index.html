@@ -81,6 +81,15 @@
   }
   .chat::-webkit-scrollbar { width: 0; }
 
+  /* 居中的时间分隔（微信风格） */
+  .time {
+    text-align: center;
+    font-size: 12px;
+    color: #b2b2b2;
+    margin: 0 0 14px;
+    user-select: none;
+  }
+
   .msg {
     display: flex;
     align-items: flex-start;
@@ -331,6 +340,14 @@
   /* ---------- 主循环 ---------- */
   async function play() {
     chat.innerHTML = '';
+
+    // 顶部时间分隔：显示本轮开始的时刻
+    var d = new Date();
+    var timeEl = document.createElement('div');
+    timeEl.className = 'time';
+    timeEl.textContent = String(d.getHours()).padStart(2, '0') + ':' +
+                         String(d.getMinutes()).padStart(2, '0');
+    chat.appendChild(timeEl);
 
     if (STILL) {
       SCRIPT.forEach(function (m) {
