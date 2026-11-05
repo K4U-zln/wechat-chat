@@ -76,6 +76,8 @@
     overflow-y: auto;
     padding: 16px 12px 12px;
     background: #ededed;
+    scroll-behavior: smooth;
+    transition: opacity .35s ease;
   }
   .chat::-webkit-scrollbar { width: 0; }
 
@@ -115,6 +117,7 @@
     color: #111;
     word-break: break-word;
     background: #fff;                /* 对方：白气泡 */
+    animation: bubble-in .26s cubic-bezier(.2, .9, .3, 1) both;
   }
   .msg.me .bubble {
     background: #95ec69;             /* 我：微信绿 #95ec69 */
@@ -138,6 +141,33 @@
     right: -12px;
     border-left-color: #95ec69;
     border-right-width: 0;
+  }
+
+  @keyframes bubble-in {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+
+  /* ---------- “正在输入” 三点动效 ---------- */
+  .bubble.typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 13px 14px;
+  }
+  .bubble.typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #b3b3b3;
+    animation: dot-bounce 1.1s infinite ease-in-out;
+  }
+  .bubble.typing span:nth-child(2) { animation-delay: .16s; }
+  .bubble.typing span:nth-child(3) { animation-delay: .32s; }
+
+  @keyframes dot-bounce {
+    0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+    30%           { opacity: 1;   transform: translateY(-3px); }
   }
 
   /* ---------- 底部输入栏 ---------- */
@@ -195,21 +225,17 @@
       </div>
     </div>
 
-    <!-- 聊天区 -->
+    <!-- 聊天区（内容由脚本逐条插入） -->
     <div class="chat">
-
-      <!-- 对方：在吗？ -->
+      <!-- 没有 JS 时的兜底内容 -->
       <div class="msg bot">
         <div class="avatar bot">码</div>
         <div class="bubble">在吗？</div>
       </div>
-
-      <!-- 我：在的，怎么啦？ -->
       <div class="msg me">
         <div class="avatar user">我</div>
         <div class="bubble">在的，怎么啦？</div>
       </div>
-
     </div>
 
     <!-- 底部输入栏 -->
@@ -242,5 +268,118 @@
 
   </div>
 
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- 对话脚本 ---------- */
+  var SCRIPT = [
+    { from: 'bot', text: '在吗？' },
+    { from: 'me',  text: '在的，怎么啦？' },
+    { from: 'me',  text: '我想用 AI 做一个无限动画，听说可以用 git 边做边回退？' },
+    { from: 'bot', text: '对，思路很简单' },
+    { from: 'bot', text: '满意就 commit，不满意就 checkout / reset 回退再改' },
+    { from: 'me',  text: '懂了，那我先去试试' },
+    { from: 'bot', text: '👍 有不懂的随时问' }
+  ];
+
+  var chat = document.querySelector('.chat');
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // ?still 或系统开启“减少动态效果”时：一次性铺开全部消息，不播放动画
+  var STILL = /[?&]still\b/.test(location.search) ||
+              (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- 构造 DOM ---------- */
+  function avatarFor(from) {
+    var a = document.createElement('div');
+    a.className = 'avatar ' + (from === 'bot' ? 'bot' : 'user');
+    a.textContent = from === 'bot' ? '码' : '我';
+    return a;
+  }
+
+  function rowFor(from, bubble) {
+    var row = document.createElement('div');
+    row.className = 'msg ' + (from === 'bot' ? 'bot' : 'me');
+    row.appendChild(avatarFor(from));
+    row.appendChild(bubble);
+    return row;
+  }
+
+  function bubbleWith(text) {
+    var b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = text;
+    return b;
+  }
+
+  function typingBubble() {
+    var b = document.createElement('div');
+    b.className = 'bubble typing';
+    b.innerHTML = '<span></span><span></span><span></span>';
+    return b;
+  }
+
+  /* ---------- 自动滚到底部 ---------- */
+  function scrollToBottom() {
+    chat.scrollTop = chat.scrollHeight;          // 先立刻贴底
+    requestAnimationFrame(function () {
+      chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+    });
+  }
+
+  /* ---------- 主循环 ---------- */
+  async function play() {
+    chat.innerHTML = '';
+
+    if (STILL) {
+      SCRIPT.forEach(function (m) {
+        var b = bubbleWith(m.text);
+        b.style.animation = 'none';
+        chat.appendChild(rowFor(m.from, b));
+      });
+      scrollToBottom();
+      return;
+    }
+
+    chat.style.opacity = '1';
+
+    for (var i = 0; i < SCRIPT.length; i++) {
+      var msg = SCRIPT[i];
+      var typing = null;
+
+      // 对方发消息前：先显示“正在输入”三点
+      if (msg.from === 'bot') {
+        typing = rowFor('bot', typingBubble());
+        chat.appendChild(typing);
+        scrollToBottom();
+        await sleep(Math.min(1600, 650 + msg.text.length * 45));
+        typing.remove();
+      } else {
+        await sleep(420);                        // 我方发言前的停顿
+      }
+
+      // 插入这一条消息
+      var row = rowFor(msg.from, bubbleWith(msg.text));
+      chat.appendChild(row);
+      scrollToBottom();
+
+      await sleep(560);                          // 两条消息之间的间隔
+    }
+
+    // 一轮播完，停一下再从头开始
+    await sleep(2600);
+    chat.style.opacity = '0';
+    await sleep(380);
+    play();
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(play);
+  } else {
+    play();
+  }
+})();
+</script>
 </body>
 </html>
