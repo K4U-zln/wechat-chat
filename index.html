@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>码道小助手</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: #ededed;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  }
+
+  /* 手机屏幕：375 × 720 */
+  .phone {
+    position: relative;
+    width: 375px;
+    height: 720px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #ededed;
+  }
+
+  /* 屏幕比手机大时居中显示，加个阴影；375 宽时正好铺满 */
+  @media (min-width: 420px), (min-height: 760px) {
+    body {
+      display: grid;
+      place-items: center;
+      background: #b9b9b9;
+      overflow: hidden;
+    }
+    .phone {
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+    }
+  }
+
+  /* ---------- 标题栏 ---------- */
+  .navbar {
+    position: relative;
+    flex: 0 0 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ededed;
+    border-bottom: 1px solid #d8d8d8;
+    z-index: 2;
+  }
+  .navbar .title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #101010;
+    letter-spacing: .3px;
+  }
+  .navbar .back,
+  .navbar .more {
+    position: absolute;
+    top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #2c2c2c;
+  }
+  .navbar .back { left: 6px; }
+  .navbar .more { right: 8px; }
+
+  /* ---------- 聊天区 ---------- */
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 12px 12px;
+    background: #ededed;
+  }
+  .chat::-webkit-scrollbar { width: 0; }
+
+  .msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 20px;
+  }
+  .msg.me { flex-direction: row-reverse; }
+
+  /* 头像 */
+  .avatar {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    user-select: none;
+  }
+  .avatar.bot  { background: linear-gradient(135deg, #4c8bf5, #2f6fe0); }
+  .avatar.user { background: linear-gradient(135deg, #8fd06a, #5fae42); }
+
+  /* 气泡 */
+  .bubble {
+    position: relative;
+    max-width: 248px;
+    padding: 9px 12px;
+    border-radius: 8px;              /* 圆角 8px */
+    font-size: 15px;
+    line-height: 1.45;
+    color: #111;
+    word-break: break-word;
+    background: #fff;                /* 对方：白气泡 */
+  }
+  .msg.me .bubble {
+    background: #95ec69;             /* 我：微信绿 #95ec69 */
+  }
+
+  /* 气泡左侧 / 右侧的小尖角 */
+  .bubble::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    width: 0;
+    height: 0;
+    border: 7px solid transparent;
+  }
+  .msg.bot .bubble::before {
+    left: -12px;
+    border-right-color: #fff;
+    border-left-width: 0;
+  }
+  .msg.me .bubble::before {
+    right: -12px;
+    border-left-color: #95ec69;
+    border-right-width: 0;
+  }
+
+  /* ---------- 底部输入栏 ---------- */
+  .inputbar {
+    flex: 0 0 56px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    background: #f7f7f7;
+    border-top: 1px solid #dcdcdc;
+  }
+  .iconbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: #4a4a4a;
+    flex: 0 0 28px;
+    cursor: pointer;
+  }
+  .input {
+    flex: 1;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #b6b6b6;
+  }
+</style>
+</head>
+<body>
+
+  <div class="phone">
+
+    <!-- 标题栏 -->
+    <div class="navbar">
+      <div class="back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 5 8 12 15 19"></polyline>
+        </svg>
+      </div>
+      <div class="title">码道小助手</div>
+      <div class="more">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.8"></circle>
+          <circle cx="12" cy="12" r="1.8"></circle>
+          <circle cx="19" cy="12" r="1.8"></circle>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 聊天区 -->
+    <div class="chat">
+
+      <!-- 对方：在吗？ -->
+      <div class="msg bot">
+        <div class="avatar bot">码</div>
+        <div class="bubble">在吗？</div>
+      </div>
+
+      <!-- 我：在的，怎么啦？ -->
+      <div class="msg me">
+        <div class="avatar user">我</div>
+        <div class="bubble">在的，怎么啦？</div>
+      </div>
+
+    </div>
+
+    <!-- 底部输入栏 -->
+    <div class="inputbar">
+      <div class="iconbtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M8.5 10.5v3M12 8.5v7M15.5 10.5v3"></path>
+        </svg>
+      </div>
+      <div class="input">发消息…</div>
+      <div class="iconbtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+          <circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+          <path d="M8.5 14c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"></path>
+        </svg>
+      </div>
+      <div class="iconbtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 8v8M8 12h8"></path>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
